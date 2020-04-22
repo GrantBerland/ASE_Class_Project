@@ -1,7 +1,7 @@
 %% House Keeping
 clear all
 close all
-clc
+
 
 %% Set Up
 % enter number of data sets
