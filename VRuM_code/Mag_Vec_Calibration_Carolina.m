@@ -17,10 +17,10 @@ rng(100)
 %% Set Up
 
 % enter number data sets
-data_sets = 5;
+data_sets = 40;
 fs = 100;
-time_end = 20;
-time = 1/fs:1/fs:20;
+time_end = 600;
+time = 1/fs:1/fs:time_end;
 
 %preallocate matrices
 data = zeros(1,length(time));
@@ -35,18 +35,21 @@ noiseModel = randn(3,length(time))*pertMagnitude;
 
 %Testing my data
 [data,B_true] = sim_data_carolina(noiseModel,time,fs);
+
 %%
+
 %Find spectogram of data for window of 0.4 seconds
+%{
 h = figure; 
-    set(h,'Color',[1 1 1]);
-    set(h,'DefaultAxesFontSize',30)
+   set(h,'Color',[1 1 1]);
+   set(h,'DefaultAxesFontSize',30)
 [s,t,f] = spectrogram(data,100,[],[],fs);
 colormap(jet)
 close all
 s = abs(s);
 
 freq = mean(s');
-
+%}
 
 
 %%
@@ -70,6 +73,8 @@ for i = 1:data_sets
     % pull out DC component
     b(i,1) = fft_data(i,1);
 end
+
+close all
 
 %% Retirive G matrix entries
 % Implament SVD algorithm

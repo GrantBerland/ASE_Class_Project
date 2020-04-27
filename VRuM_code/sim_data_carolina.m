@@ -36,9 +36,9 @@ f_helm_3 = 25;
 %Direction of coils - ideally 1 
 %Would need to add noise to this, and eventually some sort of offset 
 %Do these have to vecnorm to 1?
-e_helm_1 = 1;
-e_helm_2 = 1;
-e_helm_3 = 1;
+e_helm_1 = [1 0 0];
+e_helm_2 = [0 1 0];
+e_helm_3 = [0 0 1];
 
 %Initialize vector of Helmholtz
 B_helm_1 = zeros(length(time),1);
@@ -56,18 +56,27 @@ e_helm = e_helm/norm(e_helm);
 
 B_helm_total = [B_helm_1',B_helm_2',B_helm_3']*e_helm;
 
+e_helm = eye(3);
+%for t = 1:length(B_helm_1)
+%    B_helm_total(:,t) = [B_helm_1%(t)',B_helm_2(t)',B_helm_3(t)'] * e_helm;
+%end
+%B_helm_total = [B_helm_1',B_helm_2',B_helm_3'] * repmat(e_helm, length(B_helm_1), 1);
+
+%B_helm_total1 = B_helm_1' * repmat(e_helm_1,length(B_helm_1),1);
+B_helm_total1 = [B_helm_1', zeros(length(B_helm_1), 1),zeros(length(B_helm_1), 1)];
+B_helm_total2 = [zeros(length(B_helm_2), 1), B_helm_2', zeros(length(B_helm_2), 1)];
+B_helm_total3 = [zeros(length(B_helm_1), 1), zeros(length(B_helm_1), 1), B_helm_3'];
+
+%B_helm_total3 = [0 * B_helm_1; 0.05 * B_helm_2; 1 *  B_helm_3'];
+
 
 %External field 
-B_ext_vec(1,:) = Ext_vec(1,:) + B_helm_1;
-B_ext_vec(2,:) = Ext_vec(2,:) + B_helm_2;
-B_ext_vec(3,:) = Ext_vec(3,:) + B_helm_3;
-
-
+B_ext_vec = Ext_vec'+B_helm_total1+B_helm_total2+B_helm_total3;
 
 
 %Magnitude of external field - ie what magnetometer sees
 
-B_ext_mag = vecnorm(B_ext_vec);
+B_ext_mag = vecnorm(B_ext_vec');
 
 N = length(B_ext_mag);
 
