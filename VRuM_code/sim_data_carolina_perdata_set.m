@@ -1,4 +1,4 @@
-function [H,b, Ext_vec, Beta] = sim_data_carolina_perdata_set(Ext_field,temp_noise,time,f)
+function [H,b, External_true, Beta] = sim_data_carolina_perdata_set(Ext_field,temp_noise,time,f)
 
 %time vector
 t = length(time);
@@ -18,18 +18,18 @@ B_ext_noise_vec = temp_noise;
 
 direction_B_ext = [0.63; 0.67; 0.395];
 
-Ext_vec_noiseless = Ext_field*direction_B_ext/norm(direction_B_ext);
-Ext_vec_noiseless_time = Ext_vec_noiseless.*ones(3,t);
-Ext_vec = Ext_vec_noiseless_time+B_ext_noise_vec; 
+Ext_vec = Ext_field.*direction_B_ext/norm(direction_B_ext);
+%Ext_vec_noiseless_time = Ext_vec_noiseless.*ones(3,t);
+%Ext_vec = Ext_vec_noiseless_time+B_ext_noise_vec; 
 
 
 
 %% Create helmholtz data
 % Three orders of magnitude smaller than external field 
 
-beta_1 = Ext_vec_noiseless(1)*10^(-3);
-beta_2 = Ext_vec_noiseless(2)*10^(-3);
-beta_3 = Ext_vec_noiseless(3)*10^(-3);
+beta_1 = 6;
+beta_2 = 8;
+beta_3 = 3;
 
 Beta = [beta_1, 0, 0; 0, beta_2,0; 0, 0 beta_3];
 
@@ -76,32 +76,52 @@ B_helm_total3 = [zeros(length(B_helm_1), 1), zeros(length(B_helm_1), 1), B_helm_
 
 
 %External field 
-B_ext_vec = Ext_vec'+B_helm_total1+B_helm_total2+B_helm_total3;
+Ext_vec = Ext_vec';
+B_ext_vec = Ext_vec+B_helm_total1+B_helm_total2+B_helm_total3;
+
+External_true = Ext_vec';
 
 
 %Magnitude of external field - ie what magnetometer sees
 
+
+%Testing h 
+
+e_1 = repmat([1, 0, 0],101,1);
+e_2 = repmat([0, 1, 0],101,1);
+e_3 = repmat([0, 0, 1],101,1);
+
+h1 = beta_1*dot(External_true,e_1')/vecnorm(External_true);
+h2 = beta_2*dot(External_true,e_2')/vecnorm(External_true);
+h3 = beta_3*dot(External_true,e_3')/vecnorm(External_true);
+
+Betas = [beta_1,0,0;0,beta_2,0;0,0,beta_3];
+test = zeros(3,1);
+test = [h1,h2,h3]*inv(Betas)*mean(vecnorm(External_true));
+
 B_ext_mag = vecnorm(B_ext_vec');
+H = [h1,h2,h3];
 
 N = length(B_ext_mag);
 
 xdft = fft(B_ext_mag);
-xdft = xdft(1:N/2+1);
-psdx = (1/(N))*abs(xdft);
+xdft = xdft(1:(N-1)/2+1);
+psdx = (1/(N-1))*abs(xdft);
 psdx(2:end-1) = 2*psdx(2:end-1);
-freq = 0:f/N:f/2;
+freq = 0:f/(N-1):f/2;
 
-[H_peak,fm] = maxk(psdx(2:end),3);
+[H_peak,fm] = maxk(psdx(5:end),3);
 
 [f_sort,ind] = sort(fm);
-H = H_peak(ind);
-    
+HH = H_peak(ind);
+ 
+%H = [psdx(10), psdx(17), psdx(26)];
 % pull out DC component
 b = psdx(1,1);
 
-figure;
-semilogy(freq,psdx);
-grid on
+%figure;
+%semilogy(freq,psdx);
+%grid on
 
 
 

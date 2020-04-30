@@ -24,7 +24,6 @@ time = 1/fs:1/fs:time_end;
 
 %preallocate matrices
 data = zeros(1,length(time));
-B_true = zeros(3,100);
 
 
 %% Retrive synthetic data
