@@ -68,9 +68,9 @@ end
 %%
 B_ext_points = B_ext;
 B_ext_times = 0.5:1:59;
-B_ext_x = interp1(B_ext_times,B_ext_points(1,:),time_want,'spline');
-B_ext_y = interp1(B_ext_times,B_ext_points(2,:),time_want,'spline');
-B_ext_z = interp1(B_ext_times,B_ext_points(3,:),time_want,'spline');
+B_ext_x = interp1(B_ext_times,B_ext_points(1,:),time_want,'spline')-315;
+B_ext_y = interp1(B_ext_times,B_ext_points(2,:),time_want,'spline')-335;
+B_ext_z = interp1(B_ext_times,B_ext_points(3,:),time_want,'spline')-197;
 
 h = figure;
 set(h,'Color',[1 1 1]);
@@ -85,7 +85,6 @@ legend('VRuM Field x component','True Field x component')
 ylabel('Magnetic Field (nT)')
 xlabel('time')
 grid on
-ylim([31420,31880])
 
 h = figure;
 set(h,'Color',[1 1 1]);
@@ -100,7 +99,6 @@ legend('VRuM Field y component','True Field y component')
 ylabel('Magnetic Field (nT)')
 xlabel('time')
 grid on
-ylim([33420,33880])
 
 h = figure;
 set(h,'Color',[1 1 1]);
@@ -115,4 +113,3 @@ legend('VRuM Field z component','True Field z component')
 ylabel('Magnetic Field (nT)')
 xlabel('time')
 grid on
-ylim([19680,19970])
