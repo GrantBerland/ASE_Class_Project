@@ -11,54 +11,64 @@ addpath('./EKF_code','./igrf_code','./orbit_code');
            
 % Convert propagated position to lat/lon/alt coordinates
 latLonAltTolerance = 1e-3;
-[latitude, longitude, altitude] = ecef2geod(satellite_r0(1)*1000, ... % [deg, deg, m]
-                                            satellite_r0(2)*1000,...
+% [deg, deg, m]
+[latitude, longitude, altitude] = ecef2geod(satellite_r0(1)*1000, ... 
+                                            satellite_r0(2)*1000, ...
                                             satellite_r0(3)*1000, ...
                                             latLonAltTolerance);
+
 % Get B-field at r0
 time = datenum([2019 7 17 6 30 0]);
 B0 = igrf(time, latitude, longitude, altitude, 'geodetic')';
 
 % Noise models to add to IGRF
 %noiseModel    = 'gaussian';   % AWGN
-noiseModel    = 'gmm';        % Gaussian mixture model 
-%noiseModel    = 'exp';        % exponential noise
+%noiseModel    = 'gmm';        % Gaussian mixture model 
+noiseModel    = 'exp';        % exponential noise
 %noiseModel    = 'students-t'; % student's-t noise
 %noiseModel    = 'none';       % no noise
 
 plotOn  = 1;
 nStates = 9;
-measurements = generate_B_field_dynamics(noiseModel, plotOn);
+nObservables = 3;
+%pertMagnitude = 5e-4;
+pertMagnitude = 0;
+
+simulationLength = 1000;
+t_span = linspace(0, simulationLength, simulationLength);
 
 Q = eye(nStates);
-R = eye(3);
+R = eye(nObservables);
 dt = 10;
-[state_est, covar] = myEKF(measurements, Q, R, satellite_r0, satellite_v0, B0, dt);
 
+x0 = [satellite_r0; satellite_v0; B0];
+[state_est, covar, measurements] = myEKF(t_span, Q, R, x0, dt, noiseModel);
 
-t_end = length(measurements);
-t_span = linspace(0, t_end, length(state_est));
+residuals = measurements - state_est(:, 7:9);
 
-%{
 figure(1);
-for j = 1:6
-    subplot(6,1,j); grid on; hold on;
-    plot(t_span, state_est(:,j));
-    if j <= 3
-        ylabel(sprintf('r_{%i} [km]',j));
-    else
-        ylabel(sprintf('v_{%i} [km/s]',j))
-    end
-end
-subplot(6,1,1); title('Spacecraft Position and Velocity');
-%}
-
-j = 3;
-figure(j);
 for i = 1:3   
   subplot(3,1,i); grid on; hold on;
-  plot(t_span, state_est(:,i+3*(j-1)))
+  plot(t_span, measurements(:,i), 'b');
+  plot(t_span, state_est(:,i+3*2), 'r');
   ylabel(sprintf('B_{%i} [nT]', i));
+  if i == 1
+      legend('True B-field','Estimated B-field');
+  end
 end
 subplot(3,1,1); title('Spacecraft B-field Measurements');
 
+figure();
+for i = 1:3   
+  subplot(3,1,i); grid on; hold on;
+  %plot(t_span, residuals(:, i))
+  histogram(residuals(:, i), 100);
+  ylabel(sprintf('B_{%i} [nT]', i));
+end
+subplot(3,1,1); title('Spacecraft B-field Measurement Residuals');
+
+figure(); hold on;
+[X,Y,Z] = sphere;
+surf(X*6378,Y*6378,Z*6378);
+scatter3(state_est(:,1), state_est(:,2), state_est(:,3), '.');
+axis equal;

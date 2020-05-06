@@ -1,25 +1,33 @@
-function [pert_state_est, covar] = myEKF(measurements, Q, R, r0, v0, B0, dt)
+function [pert_state_est, covar, measurement_array] = myEKF(timeArray, Q, R, x0, dt, noiseModel)
 
 % Number of states [x,y,z,vx,vy,vz,Bx,By,Bz]
 n = 9;
+nMeasurements = 10;
 
-pert_state_est = zeros(length(measurements), n);
-covar     = zeros(length(measurements), n, n);
+pert_state_est = zeros(length(timeArray), n);
+covar          = zeros(length(timeArray), n, n);
+measurement_array = [];
 
-initial_state = [r0 ; v0; B0];
+initial_state = x0;
 initial_covar = eye(n)*1e5;
 
-for i = 1:length(measurements)
+for i = 1:length(timeArray)
     
     % EKF prediction step
     [x_minus, P_minus] = EKF_predict(Q, initial_state, initial_covar, dt);
     
+    % Simulated measurement at the spacecraft location
+    measurement = generate_B_field_measurement(noiseModel, 1e-5, 0, ...
+        initial_state(1:3), initial_state(4:6), dt, nMeasurements);
+    
     % EKF measurement update step
-    [pert_state_est(i,:), covar(i,:,:)] = EKF_update(R, measurements(i,:), x_minus, P_minus);
+    [pert_state_est(i,:), covar(i,:,:)] = EKF_update(R, measurement, x_minus, P_minus, dt);
     
     % Set current step state estimate to be initial guess for next step
     initial_state = pert_state_est(i,:)';
     initial_covar = reshape(covar(i,:,:), 9, 9);
+    
+    measurement_array = [mean(measurement); measurement_array];
 end
 end
 function [state_est, covar] = EKF_predict(Q, initial_state, initial_covar, dt)
@@ -34,16 +42,20 @@ F = dynamics_model(initial_state, 'linearized', dt);
 covar     = F*initial_covar*F' + Q;
 
 end
-function [state_est, covar] = EKF_update(R, measurement, initial_state, initial_covar)
+function [state_est, covar] = EKF_update(R, measurement, initial_state, initial_covar, dt)
 
 % Compute linearized measurement model about current state
-H = measurement_model(initial_state, 'linearized');
+H = measurement_model(initial_state, 'linearized', length(measurement), dt);
+
+% Repeat the R matrix according to the measurement size
+R = diag(repmat(diag(R), length(measurement), 1));
 
 % Compute Kalman gain
 K_gain = initial_covar * H' / ( H * initial_covar * H' + R);
 
 % Compute updated state measurement
-state_est = initial_state + K_gain * (measurement' - measurement_model(initial_state, 'full'));
+innovation = measurement - measurement_model(initial_state, 'full', length(measurement), dt);
+state_est = initial_state + K_gain * reshape(innovation', [], 1);
 
 % Compute updated covariance
 covar = (eye(length(state_est)) - K_gain * H) * initial_covar;

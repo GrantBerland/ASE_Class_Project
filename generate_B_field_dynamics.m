@@ -1,4 +1,4 @@
-function B = generate_B_field_dynamics(noiseModel, plotOn)
+function B = generate_B_field_dynamics(noiseModel, pertMagnitude, plotOn, lat, lon, alt)
 nSteps = 1000;
 
 % TODO: replace these with derived orbital parameters
@@ -18,8 +18,6 @@ alt  = 500*1e3;                  % m
 %noiseModel    = 'exp';
 %noiseModel    = 'students-t';
 %noiseModel    = 'none';
-
-pertMagnitude = 5e-4;
 
 if strcmp(noiseModel, 'gaussian')
     pert = randn(3,nSteps)*pertMagnitude;
@@ -42,7 +40,7 @@ Bz = Bz + pert(3,:)';
 
 % Plot B-field components
 if plotOn == 1
-    figure(2); subplot(3,1,1); plot(Bx); ylabel('B_x [nT]'); grid on;
+    figure(1); subplot(3,1,1); plot(Bx); ylabel('B_x [nT]'); title('True B-field'); grid on;
     subplot(3,1,2); plot(By); ylabel('B_y [nT]'); grid on;
     subplot(3,1,3); plot(Bz); ylabel('B_z [nT]'); grid on; xlabel('Sample');
 end
