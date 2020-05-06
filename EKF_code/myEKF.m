@@ -1,15 +1,15 @@
-function [pert_state_est, covar, measurement_array] = myEKF(timeArray, Q, R, x0, dt, noiseModel)
+function [pert_state_est, covar, measurement_array] = myEKF(timeArray, Q, R, x0, dt, noiseModel, pertMagnitude)
 
 % Number of states [x,y,z,vx,vy,vz,Bx,By,Bz]
 n = 9;
-nMeasurements = 10;
+nMeasurements = dt*100; % 100 Hz sampling rate
 
 pert_state_est = zeros(length(timeArray), n);
 covar          = zeros(length(timeArray), n, n);
 measurement_array = [];
 
 initial_state = x0;
-initial_covar = eye(n)*1e5;
+initial_covar = eye(n)*1e0;
 
 for i = 1:length(timeArray)
     
@@ -17,7 +17,7 @@ for i = 1:length(timeArray)
     [x_minus, P_minus] = EKF_predict(Q, initial_state, initial_covar, dt);
     
     % Simulated measurement at the spacecraft location
-    measurement = generate_B_field_measurement(noiseModel, 1e-5, 0, ...
+    measurement = generate_B_field_measurement(noiseModel, pertMagnitude, 0, ...
         initial_state(1:3), initial_state(4:6), dt, nMeasurements);
     
     % EKF measurement update step
