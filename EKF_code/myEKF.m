@@ -1,15 +1,15 @@
-function [pert_state_est, covar, measurement_array] = myEKF(timeArray, Q, R, x0, dt, noiseModel)
+function [pert_state_est, covar, measurement_array] = myEKF(timeArray, Q, R, x0, dt, noiseModel, pertMagnitude)
 
 % Number of states [x,y,z,vx,vy,vz,Bx,By,Bz]
 n = 9;
-nMeasurements = 10;
+nMeasurements = dt*100; % 100 Hz sampling rate
 
 pert_state_est = zeros(length(timeArray), n);
 covar          = zeros(length(timeArray), n, n);
 measurement_array = [];
 
 initial_state = x0;
-initial_covar = eye(n)*1e5;
+initial_covar = eye(n)*1e0;
 
 for i = 1:length(timeArray)
     
@@ -17,8 +17,8 @@ for i = 1:length(timeArray)
     [x_minus, P_minus] = EKF_predict(Q, initial_state, initial_covar, dt);
     
     % Simulated measurement at the spacecraft location
-    measurement = generate_B_field_measurement(noiseModel, 1e-5, 0, ...
-        initial_state(1:3), initial_state(4:6), dt, nMeasurements);
+    %measurement = generate_B_field_measurement(noiseModel, pertMagnitude, 0,initial_state(1:3), initial_state(4:6), dt, nMeasurements);
+     measurement = Mag_Vec_Calibration_Carolina_shortcut_IGRF(noiseModel,pertMagnitude,0,initial_state,dt,nMeasurements);
     
     % EKF measurement update step
     [pert_state_est(i,:), covar(i,:,:)] = EKF_update(R, measurement, x_minus, P_minus, dt);
@@ -59,5 +59,11 @@ state_est = initial_state + K_gain * reshape(innovation', [], 1);
 
 % Compute updated covariance
 covar = (eye(length(state_est)) - K_gain * H) * initial_covar;
+
+%Compute S_k for NIS
+S_k = H*initial_covar*H'+R; 
+NIS = innovation*S_k*innovation';
+
+
 
 end

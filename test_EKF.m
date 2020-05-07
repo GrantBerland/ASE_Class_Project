@@ -31,34 +31,46 @@ noiseModel    = 'exp';        % exponential noise
 plotOn  = 1;
 nStates = 9;
 nObservables = 3;
-%pertMagnitude = 5e-4;
-pertMagnitude = 0;
+%pertMagnitude = 5e-5;
+pertMagnitude = 5e-7;
+%pertMagnitude = 0;
 
-simulationLength = 1000;
+simulationLength = 200;
 t_span = linspace(0, simulationLength, simulationLength);
 
 Q = eye(nStates);
-R = eye(nObservables);
-dt = 10;
+
+%Q(7,7) = Q(9,9)*1000;
+%Q(8,8) = Q(9,9)*1000;
+%Q(9,9) = Q(9,9)*1000;
+
+R = eye(nObservables)*9.5e-2;
+
+%R(3,3) = 0.0225;
+%R(3,3) = 0.015;
+
+dt = 1;
 
 x0 = [satellite_r0; satellite_v0; B0];
-[state_est, covar, measurements] = myEKF(t_span, Q, R, x0, dt, noiseModel);
+[state_est, covar, measurements] = myEKF(t_span, Q, R, x0, dt, noiseModel, pertMagnitude);
 
 residuals = measurements - state_est(:, 7:9);
 
-figure(1);
+figure(1); clf;
 for i = 1:3   
   subplot(3,1,i); grid on; hold on;
   plot(t_span, measurements(:,i), 'b');
   plot(t_span, state_est(:,i+3*2), 'r');
+  plot(t_span, state_est(:,i+3*2)+covar(:,i+3*2,i+3*2), '--g','Linewidth',0.5);
+  plot(t_span, state_est(:,i+3*2)-covar(:,i+3*2,i+3*2), '--g','Linewidth',0.5)
   ylabel(sprintf('B_{%i} [nT]', i));
   if i == 1
-      legend('True B-field','Estimated B-field');
+      legend('True B-field','Estimated B-field','\pm 1 \sigma');
   end
 end
 subplot(3,1,1); title('Spacecraft B-field Measurements');
 
-figure();
+figure(2); clf;
 for i = 1:3   
   subplot(3,1,i); grid on; hold on;
   %plot(t_span, residuals(:, i))
@@ -67,8 +79,10 @@ for i = 1:3
 end
 subplot(3,1,1); title('Spacecraft B-field Measurement Residuals');
 
+%{
 figure(); hold on;
 [X,Y,Z] = sphere;
 surf(X*6378,Y*6378,Z*6378);
 scatter3(state_est(:,1), state_est(:,2), state_est(:,3), '.');
 axis equal;
+%}
