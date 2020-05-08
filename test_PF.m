@@ -37,7 +37,7 @@ dt = 10;
 nParts = 100;
 x0 = [satellite_r0; satellite_v0; B0];
 
-[state_est, covar, meas] = myParticleFilter(linspace(0, simLength, simLength), x0, ...
+[state_est, covar, meas] = myParticleFilter(1:simLength, x0, ...
                                             eye(9), noiseModel, 1e-5, nParts, dt);
 
 

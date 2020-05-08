@@ -19,7 +19,7 @@ for i = 1:length(timeArray)
     % Simulated measurement at the spacecraft location
     measurement = generate_B_field_measurement(noiseModel, pertMagnitude, 0, ...
         initial_state(1:3), initial_state(4:6), dt, nMeasurements);
-    
+    initial_state(4:6)
     % EKF measurement update step
     [pert_state_est(i,:), covar(i,:,:)] = EKF_update(R, measurement, x_minus, P_minus, dt);
     

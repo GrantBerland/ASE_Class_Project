@@ -9,12 +9,17 @@ weights = ones(nParts, 1)/nParts;
 resampleThreshold = 0.6;
 
 % Initialize particles normally about the B-field state
-initParts = randn(nParts, 3) + x0(7:end)';
+initParts = (randn(nParts, 3) + x0(7:end)')*10;
 
+parts = initParts;
+x = x0;
 for i = 1:timeArray
     
+    r = x(1:3);
+    v = x(4:6);
+    
     % Predict state with particle draw from importance PDF
-    parts = sampleFromProposalDist(parts, [r; v], noiseModel, pertMagnitude, dt);
+    parts = sampleFromProposalDist(parts, weights, [r; v], noiseModel, pertMagnitude, dt);
     
     % Generate measurement
     measurement = generate_B_field_measurement(noiseModel, pertMagnitude, 0, r, v, dt, dt*100);
@@ -25,22 +30,27 @@ for i = 1:timeArray
     % Normalize weights s.t. sum(weights) == 1
     weights = weights / sum(weights);
     
-    % Test if particles need to be resampled
-    Neff = 1/sum(weights.^2);
-    if Neff >= resampleThreshold*nParts
-        [parts, weights] = resample(parts, weights);
-    end
-    
     % Get and store estimate at current timestep
     [state_est(:,i), covar(:,:,i)] = getEstimate(parts, weights, support, 'MAP');
     
+    % Test if particles need to be resampled
+    Neff = 1/sum(weights.^2);
+    if Neff <= resampleThreshold*nParts
+        % Draw new particles from previous weighted population
+        parts = resample(parts, weights);
+        
+        % Reset weights uniformity
+        weights = ones(length(weights), 1)/length(weights);
+    end
+    
 end
 
 end
-function [newParts] = sampleFromProposalDist(parts, x0_r_v, noiseModel, pertMagnitude, dt)
+function [newParts, x_r_v] = sampleFromProposalDist(parts, weights, x0_r_v, noiseModel, pertMagnitude, dt)
 %(TODO: insert algo)
 
 newParts = zeros(size(parts));
+nSteps = 1;
 
 % Noise models to sample from
 if strcmp(noiseModel, 'gaussian')
@@ -59,13 +69,13 @@ elseif strcmp(noiseModel, 'exp')
 end
 
 
-for i = 1:nParts
+for i = 1:length(parts)
     
-    parts(:,i) = dynamics_model([x0_r_v; parts(:,i)], 'full', dt);
+    propagatedState = dynamics_model([x0_r_v; parts(i,:)'], 'full', dt);
     
-    %Sample nParts particles from pdf of x - with replacement 
-    newParts = datasample(parts, nParts, 1, 'Weights', weights, 'Replace', true);
-
+    x_r_v      = propagatedState(1:6);
+    newParts(i,:) = propagatedState(7:9);
+    
 %To sample for particles, first need to sample noise 
 %This depends on what noise model we are using 
 
@@ -74,11 +84,10 @@ for i = 1:nParts
 %doing one particle at a time 
 
 %To find weights - use p(y_k|x_k^i) and evaluate at x_k^i
-
-
 end
 
-parts = [parts; newParts];
+%Sample nParts particles from pdf of x - with replacement 
+newParts = datasample(newParts, length(parts), 1, 'Weights', weights, 'Replace', true);
 
 end
 function newWeights = computeWeights(measurement, parts, weights, r, v, dt)
