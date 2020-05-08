@@ -1,6 +1,6 @@
 
 
-addpath('./EKF_code','./igrf_code','./orbit_code', './shared_fncs');
+addpath('./PF_code','./igrf_code','./orbit_code', './shared_fncs');
 set(0,'DefaultFigureWindowStyle','docked')
 
 
@@ -22,8 +22,8 @@ time = datenum([2019 7 17 6 30 0]);
 B0 = igrf(time, latitude, longitude, altitude, 'geodetic')';
 
 % Noise models to add to IGRF
-%noiseModel    = 'gaussian';   % AWGN
-noiseModel    = 'gmm';        % Gaussian mixture model 
+noiseModel    = 'gaussian';   % AWGN
+%noiseModel    = 'gmm';        % Gaussian mixture model 
 %noiseModel    = 'exp';        % exponential noise
 %noiseModel    = 'students-t'; % student's-t noise
 %noiseModel    = 'none';       % no noise
@@ -35,9 +35,10 @@ simLength = 1000;
 
 dt = 10;
 nParts = 100;
-x0 = [satellite_r0, satellite_v0, B0];
+x0 = [satellite_r0; satellite_v0; B0];
 
-[state_est, covar, meas] = myParticleFilter(linspace(0, simLength, simLength), x0, nParts, dt);
+[state_est, covar, meas] = myParticleFilter(linspace(0, simLength, simLength), x0, ...
+                                            eye(9), noiseModel, 1e-5, nParts, dt);
 
 
 t_end = length(measurements);
