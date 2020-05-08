@@ -1,4 +1,4 @@
-function [state_est, covar, measurements] = myParticleFilter(timeArray, x0, noiseModel, nParts, dt)
+function [state_est, covar, measurements] = myParticleFilter(timeArray, x0, Q, noiseModel, pertMagnitude, nParts, dt)
 
 state_est = zeros(length(x0), length(timeArray)); % 9 x tSpan
 covar     = zeros(length(x0), length(x0), length(timeArray)); % 9 x 9 x tSpan
@@ -8,9 +8,9 @@ weights = ones(nParts, 1)/nParts;
 
 resampleThreshold = 0.6;
 
-initialStatePDF = x0;
-
 % Initial pdf - p(x) - I think this is it - past this should be p(x_k+1|x_k)
+initialPDF = normpdf(x0, Q);
+
 
 %Sample nParts particles from pdf of x - with replacement 
 parts = datasample(pdf_x, nParts, 'Replacement', true);
@@ -18,7 +18,10 @@ parts = datasample(pdf_x, nParts, 'Replacement', true);
 for i = 1:timeArray
     
     % Get posterior PDF 
-    [posterior, oldParticles, w] = sampleFromProposalDist(parts, x0, noiseModel, pdf_yk_xki);
+    [posterior, oldParticles, w] = sampleFromProposalDist(parts, weights, x0, noiseModel, pdf_yk_xki);
+    
+    % Generate measurement
+    B = generate_B_field_measurement(noiseModel, pertMagnitude, 0, r, v, dt, dt*100);
     
     % Get weights
     weights = computWeights();
@@ -60,13 +63,12 @@ function [estimate, covar] = getEstimate(particles, weights, support, typeOfEsti
 
 switch typeOfEstimator
     case 'MMSE'
-        %(TODO: insert algo)
-
-        estimate = 1;
-        covar    = 1;
+        % Weighted average of all particles
+        estimate = sum(weights.*particles);
+        covar    = var(weights.*particles);
     case 'MAP'  
         % Kernel density estimate to generate a PDF
-        density = ksdensity(particles, support, ...
+        density = ksdensity(weights.*particles, support, ...
                             'kernel', 'epanechnikov');
 
         % Locate mode of posterior

@@ -1,6 +1,6 @@
 
 
-addpath('./EKF_code','./igrf_code','./orbit_code');
+addpath('./EKF_code','./igrf_code','./orbit_code', './shared_fncs');
 set(0,'DefaultFigureWindowStyle','docked')
 
 

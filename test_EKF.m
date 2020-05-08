@@ -1,6 +1,6 @@
 
 
-addpath('./EKF_code','./igrf_code','./orbit_code');
+addpath('./EKF_code','./igrf_code','./orbit_code','./shared_fncs');
 
 % Establish satellite orbit (ISS orbit) and convert to (r0, v0)
 [OE] = TLE2OrbitalElements(getSatelliteTLE(25544));
