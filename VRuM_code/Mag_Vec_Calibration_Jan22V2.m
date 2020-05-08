@@ -1,9 +1,8 @@
 %% House Keeping
 clear all
 close all
-clc
 
-addpath('../igrf_code')
+
 %% Set Up
 % enter number of data sets
 N = 1000;
@@ -17,12 +16,22 @@ B_ext_vec = zeros(N,3);
 rng(100)
 %% Retrive synthetic data
 
-[data, B_ext_truel] = generateVRuMdataFromIGRF(N, 'none', 5e-4);
+rando = abs(randn(1,N)*200);
 
-% pull out principle harmonics ( find peaks may not be the best way)
-[H(i,:), fm(i,:)] = maxk(data(i,2:end),3); % endpoints excluded
-
-b(i,1) = data(i,1);
+for i = 1:N
+    
+    % add random WGN to simulate variable test conditions
+    temp_noise = rando(i);
+    
+    % get synthetic data
+    [data(i,:), B_ext_true] = Synth_data_pT_Jan22V2(temp_noise,false);
+    
+    % pull out principle harmonics ( find peaks may not be the best way)
+    [H(i,:), fm(i,:)] = maxk(data(i,2:end),3); % endpoints excluded
+    
+    % pull out DC component
+    b(i,1) = data(i,1);
+end
 
 %% Retirive G matrix entries
 % Implament SVD algorithm
