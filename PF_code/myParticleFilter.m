@@ -1,56 +1,71 @@
-function [state_est, covar, measurements] = myParticleFilter(timeArray, x0, Q, noiseModel, pertMagnitude, nParts, dt)
+function [state_est, covar, measurement_array] = myParticleFilter(timeArray, x0, Q, noiseModel, pertMagnitude, nParts, dt)
 
-state_est = zeros(length(x0), length(timeArray)); % 9 x tSpan
-covar     = zeros(length(x0), length(x0), length(timeArray)); % 9 x 9 x tSpan
-
+state_est = zeros(3, length(timeArray)); % 9 x tSpan
+covar     = zeros(3, length(timeArray)); % 9 x 9 x tSpan
+measurement_array = [];
 % Assign initial uniform weight to all particles
 weights = ones(nParts, 1)/nParts;
 
-resampleThreshold = 0.6;
+resampleThreshold = 0.7;
 
 % Initialize particles normally about the B-field state
-initParts = (randn(nParts, 3) + x0(7:end)')*10;
-
+initParts = randn(nParts, 3)*10 + x0(7:end)';
+incr = 0;
 parts = initParts;
 x = x0;
-for i = 1:timeArray
+for i = 1:length(timeArray)
     
     r = x(1:3);
     v = x(4:6);
     
+    %figure(1); hold on; grid on;
+    %p1=scatter3(parts(:,1), parts(:,2), parts(:,3), weights*5000, '.');
+    
     % Predict state with particle draw from importance PDF
-    parts = sampleFromProposalDist(parts, weights, [r; v], noiseModel, pertMagnitude, dt);
+    [parts, r, v] = sampleFromProposalDist(parts, weights, [r; v], noiseModel, pertMagnitude, dt);
     
+    incr = incr + 1;
+    if mod(incr, 10) == 0
+        cla;
+    end
+    
+    %p2=scatter3(parts(:,1), parts(:,2), parts(:,3), weights*5000, '.');
+    xlabel('B_x'); ylabel('B_y'); zlabel('B_z');
     % Generate measurement
-    measurement = generate_B_field_measurement(noiseModel, pertMagnitude, 0, r, v, dt, dt*100);
+    measurement = Mag_Vec_Calibration_Carolina_shortcut_IGRF(noiseModel,pertMagnitude,0,[r; v],dt,dt*100);
     
-    % Get weights based on observational likelihood PDF
-    weights = computeWeights(measurement, parts, weights, r, v, dt);
+    measurement(:,1) = measurement(:,1)+9e-6;
+    measurement(:,2) = measurement(:,2)-11e-6;
+    measurement(:,3) = measurement(:,3)+11.75e-5;
+    %p3=scatter3(mean(measurement(:,1)), mean(measurement(:,2)), mean(measurement(:,3)), 'o');
+    % Get weights based on observational ltikelihood PDF
+    weights = computeWeights(mean(measurement, 1), parts, weights, r, v, dt);
     
-    % Normalize weights s.t. sum(weights) == 1
-    weights = weights / sum(weights);
     
     % Get and store estimate at current timestep
-    [state_est(:,i), covar(:,:,i)] = getEstimate(parts, weights, support, 'MAP');
+    [state_est(:,i), covar(:,i)] = getEstimate(parts, weights, 'MMSE');
     
     % Test if particles need to be resampled
     Neff = 1/sum(weights.^2);
-    if Neff <= resampleThreshold*nParts
+    if Neff <= resampleThreshold * nParts
         % Draw new particles from previous weighted population
         parts = resample(parts, weights);
         
         % Reset weights uniformity
-        weights = ones(length(weights), 1)/length(weights);
+        %weights = ones(length(weights), 1)/length(weights);
     end
     
+    %p4=scatter3(state_est(1,i), state_est(2,i), state_est(3,i), '*');
+    %legend([p1(1),p2(1),p3(1),p4(1)],'x_{k-1}','x_{k}','Measurement','State Estimate')
+    
+    measurement_array = [measurement_array; mean(measurement, 1)];
 end
 
 end
-function [newParts, x_r_v] = sampleFromProposalDist(parts, weights, x0_r_v, noiseModel, pertMagnitude, dt)
-%(TODO: insert algo)
+function [newParts, r, v] = sampleFromProposalDist(parts, weights, x0_r_v, noiseModel, pertMagnitude, dt)
 
 newParts = zeros(size(parts));
-nSteps = 1;
+nSteps = length(parts);
 
 % Noise models to sample from
 if strcmp(noiseModel, 'gaussian')
@@ -73,7 +88,8 @@ for i = 1:length(parts)
     
     propagatedState = dynamics_model([x0_r_v; parts(i,:)'], 'full', dt);
     
-    x_r_v      = propagatedState(1:6);
+    r = propagatedState(1:3);
+    v = propagatedState(4:6);
     newParts(i,:) = propagatedState(7:9);
     
 %To sample for particles, first need to sample noise 
@@ -87,21 +103,20 @@ for i = 1:length(parts)
 end
 
 %Sample nParts particles from pdf of x - with replacement 
-newParts = datasample(newParts, length(parts), 1, 'Weights', weights, 'Replace', true);
+newParts = datasample(newParts + pert', length(parts), 1, 'Weights', weights, 'Replace', true);
 
 end
 function newWeights = computeWeights(measurement, parts, weights, r, v, dt)
 
-newWeights = zeros(length(weights), 1);
-for i = 1:length(weights)
+innovation = measurement - parts;
 
-    newWeights(i) = measurement_model([r; v], 'full', length(measurement), dt);
-    
+newWeights = weights.*normpdf(mean(innovation, 2)*500000);
+
+% Normalize weights s.t. sum(weights) == 1
+newWeights = newWeights./sum(newWeights);
+
 end
-
-
-end
-function [estimate, covar] = getEstimate(particles, weights, support, typeOfEstimator)
+function [estimate, covar] = getEstimate(particles, weights, typeOfEstimator)
 
 switch typeOfEstimator
     case 'MMSE'
@@ -109,8 +124,10 @@ switch typeOfEstimator
         estimate = sum(weights.*particles);
         covar    = var(weights.*particles);
     case 'MAP'  
+        estimate = [0;0;0];
+        for i = 1:3
         % Kernel density estimate to generate a PDF
-        density = ksdensity(weights.*particles, support, ...
+        density(i) = ksdensity(weights.*particles(:,i), ...
                             'kernel', 'epanechnikov');
 
         % Locate mode of posterior
@@ -118,8 +135,9 @@ switch typeOfEstimator
 
         % Estimate state and covariance within the 
         % resolution of the passed-in support
-        estimate = support(idx);
+        estimate(i) = support(idx);
         covar    = var(density);
+        end
     otherwise
         error("Enter a valid estimator type to function: getEstimate()")
 end

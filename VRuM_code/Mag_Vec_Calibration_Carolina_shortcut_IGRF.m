@@ -1,4 +1,4 @@
-function measurements = Mag_Vec_Calibration_Carolina_shortcut_IGRF(noiseModel,permag,plot_status,initial_state,dt,nMeasurements);
+function measurements = Mag_Vec_Calibration_Carolina_shortcut_IGRF(noiseModel,permag,plot_status,initial_state,dt,nMeasurements)
 
 % Script that find the vector magnetic field of the external field the 
 % magnetometer is trying to measure by analyzing the spectra of the 
