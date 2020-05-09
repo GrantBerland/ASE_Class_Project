@@ -24,8 +24,8 @@ B0 = igrf(time, latitude, longitude, altitude, 'geodetic')';
 
 % Noise models to add to IGRF
 %noiseModel    = 'gaussian';   % AWGN
-%noiseModel    = 'gmm';        % Gaussian mixture model 
-noiseModel    = 'exp';        % exponential noise
+noiseModel    = 'gmm';        % Gaussian mixture model 
+%noiseModel    = 'exp';        % exponential noise
 %noiseModel    = 'students-t'; % student's-t noise
 %noiseModel    = 'none';       % no noise
 

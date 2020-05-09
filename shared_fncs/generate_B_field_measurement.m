@@ -32,7 +32,7 @@ B = igrf(time, lat, lon, alt, 'geocentric');
 if strcmp(noiseModel, 'gaussian')
     pert = randn(3,nSteps)*pertMagnitude;
 elseif strcmp(noiseModel, 'students-t')
-    pert = trnd(3,nSteps)*pertMagnitude;
+    pert = trnd(3,[3 nSteps])*pertMagnitude;
 elseif strcmp(noiseModel, 'gmm')
     mu = randn(5, 1)*10;
     gm = gmdistribution(mu,diag(pertMagnitude));
